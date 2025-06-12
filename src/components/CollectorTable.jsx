@@ -75,7 +75,6 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
   };
 
   const getFilteredCollectors = () => {
-    // Handle both direct array and wrapped data structure
     const collectorsArray = Array.isArray(collectors) ? collectors : (collectors?.data || []);
     
     return collectorsArray.filter((c) => {
@@ -129,14 +128,12 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
         </select>
       </div>
 
-      {/* Debug Info - Remove this in production */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mb-4 p-2 bg-gray-100 text-sm">
           <strong>Debug:</strong> Found {filteredCollectors.length} collectors
         </div>
       )}
 
-      {/* Table */}
       <div className="overflow-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-800 text-white sticky top-0">
@@ -225,7 +222,6 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
         </table>
       </div>
 
-      {/* Update Modal */}
       {isModalOpen && selectedCollector && (
         <UpdateCollectorModal
           isOpen={isModalOpen}

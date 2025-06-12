@@ -16,7 +16,6 @@ const Dashboard = () => {
         setCollectors(teamData);
 
         const projectsResponse = await axios.get('http://127.0.0.1:8000/api/assign-project/');
-        // console.log("Projects API Response:", projectsResponse.data);
         setActiveProjects(projectsResponse.data.active_projects || {});
         
         setLoading(false);
@@ -46,11 +45,6 @@ const Dashboard = () => {
     );
   }
 
-  // Debug log to check data structure
-  // console.log("Collectors data:", collectors);
-  // console.log("Active projects:", activeProjects);
-
-  // Calculate statistics
   const totalCollectors = collectors.filter(c => 
     c.role === 'data_collector' || c.role === 'Data Collector'
   ).length;
