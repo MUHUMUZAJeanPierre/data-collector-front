@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { deleteTeamMember } from '../api/api';
 import UpdateCollectorModal from './UpdateCollectorModal';
 
@@ -8,6 +8,52 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
   const [experienceFilter, setExperienceFilter] = useState('');
   const [selectedCollector, setSelectedCollector] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeProjects, setActiveProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+
+  // Fetch active projects on component mount
+  useEffect(() => {
+    const fetchActiveProjects = async () => {
+      try {
+        setProjectsLoading(true);
+        const response = await fetch('http://127.0.0.1:8000/api/assign-project/');
+        
+        if (response.ok) {
+          const projectsData = await response.json();
+          
+          // Extract active project names from the response structure
+          const active = [];
+          if (projectsData.active_projects) {
+            Object.keys(projectsData.active_projects).forEach(projectKey => {
+              const project = projectsData.active_projects[projectKey];
+              if (project.project_info) {
+                // Add project if it has active status or if all projects in active_projects are considered active
+                const projectName = project.project_info.name || projectKey;
+                const status = project.project_info.status;
+                
+                // Include if status is 'active' or if status is null/undefined (assuming they're active by being in active_projects)
+                if (status === 'active' ) {
+                  active.push(projectName);
+                }
+              }
+            });
+          }
+          
+          setActiveProjects(active);
+        } else {
+          console.error('Failed to fetch projects:', response.statusText);
+          setActiveProjects([]);
+        }
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setActiveProjects([]);
+      } finally {
+        setProjectsLoading(false);
+      }
+    };
+
+    fetchActiveProjects();
+  }, []);
 
   const handleDelete = async (id) => {
     if (window.confirm('Delete this member?')) {
@@ -88,6 +134,42 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
     });
   };
 
+  const formatAssignedProjects = (projects) => {
+    if (projectsLoading) {
+      return <span className="text-gray-400 italic">Loading...</span>;
+    }
+
+    if (!projects || !Array.isArray(projects) || projects.length === 0) {
+      return <span className="text-gray-400 italic">None</span>;
+    }
+    
+    // Filter assigned projects to only show active ones
+    const activeAssignedProjects = projects.filter(project => 
+      activeProjects.includes(project)
+    );
+
+    if (activeAssignedProjects.length === 0) {
+      return <span className="text-gray-400 italic">No active projects</span>;
+    }
+    
+    if (activeAssignedProjects.length === 1) {
+      return <span className="text-gray-900">{activeAssignedProjects[0]}</span>;
+    }
+    
+    return (
+      <div className="space-y-1">
+        {activeAssignedProjects.map((project, index) => (
+          <span
+            key={index}
+            className="inline-block bg-blue-50 text-blue-700 text-xs px-2 py-1 rounded-full mr-1 mb-1"
+          >
+            {project}
+          </span>
+        ))}
+      </div>
+    );
+  };
+
   const filteredCollectors = getFilteredCollectors();
 
   return (
@@ -130,7 +212,11 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
 
       {process.env.NODE_ENV === 'development' && (
         <div className="mb-4 p-2 bg-gray-100 text-sm">
-          <strong>Debug:</strong> Found {filteredCollectors.length} collectors
+          <strong>Debug:</strong> Found {filteredCollectors.length} collectors | 
+          Active Projects: {projectsLoading ? 'Loading...' : activeProjects.length}
+          {!projectsLoading && activeProjects.length > 0 && (
+            <span className="ml-2">({activeProjects.join(', ')})</span>
+          )}
         </div>
       )}
 
@@ -140,7 +226,8 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
             <tr>
               {[
                 'VE Code', 'Name', 'Role', 'Projects Count', 'Experience Level',
-                'Performance Score', 'Rotation Rank', 'Status', 'Current Project', 'Actions',
+                'Performance Score', 'Rotation Rank', 'Status', 'Current Project', 
+                'Assigned Projects', 'Actions',
               ].map((h) => (
                 <th key={h} className="px-4 py-2 text-left">{h}</th>
               ))}
@@ -181,6 +268,9 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
                       {c.current_project || 'Unassigned'}
                     </span>
                   </td>
+                  <td className="px-4 py-2">
+                    {formatAssignedProjects(c.assigned_projects)}
+                  </td>
                   <td className="px-4 py-2 space-x-2">
                     <button
                       className={`text-xs px-3 py-1 rounded font-semibold ${
@@ -213,7 +303,7 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
             })}
             {filteredCollectors.length === 0 && (
               <tr>
-                <td colSpan="10" className="px-4 py-4 text-center text-gray-500">
+                <td colSpan="11" className="px-4 py-4 text-center text-gray-500">
                   No team members match your filters.
                 </td>
               </tr>

@@ -7,6 +7,7 @@ const initialFormState = {
   numSupervisors: '',
   startDate: '',
   endDate: '',
+  status: 'active', // Add status property with default value
 };
 
 const ProjectForm = ({ onSuccess }) => {
@@ -40,20 +41,30 @@ const ProjectForm = ({ onSuccess }) => {
     setMessage('');
 
     try {
+      // Ensure status is set to 'active' before sending
+      const projectData = {
+        ...form,
+        status: 'active'
+      };
+
+      // Console log to see what we're sending
+      console.log('Sending project data:', projectData);
+      console.log('Form state before sending:', form);
+
       const response = await fetch('http://127.0.0.1:8000/api/assign-project/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(projectData),
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log("result",result)
-        setMessage('✅ Project assigned successfully!');
+        console.log("result", result);
+        setMessage('✅ Project assigned successfully with active status!');
         console.log('API response:', result);
         setForm(initialFormState);
 
-        if (onSuccess) onSuccess(); 
+        if (onSuccess) onSuccess();
       } else {
         const errorData = await response.json();
         console.error('API error:', errorData);
@@ -71,7 +82,7 @@ const ProjectForm = ({ onSuccess }) => {
     <div className="bg-white p-6 rounded-xl shadow mb-8">
       <h2 className="text-xl font-semibold text-gray-800 mb-4">New Project Assignment</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-
+        
         {[
           { label: 'Scrum Master Name', id: 'name', type: 'text' },
           { label: 'Project Name', id: 'projectName', type: 'text' },

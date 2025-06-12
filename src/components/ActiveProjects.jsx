@@ -55,9 +55,14 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
           return processProjectData(projectName, projectData, teamMembersData.data || []);
         });
 
-        // Show ALL projects regardless of status - this fixes the main issue
+        // Filter to show ONLY active projects
+        const activeProjects = projectsArray.filter(project => 
+          project.status?.toLowerCase() === 'active'
+        );
+        
         console.log("All Projects:", projectsArray);
-        setProjects(projectsArray);
+        console.log("Active Projects Only:", activeProjects);
+        setProjects(activeProjects);
       } else {
         console.error("Unexpected response format - no active_projects found", projectsData);
         setProjects([]);
@@ -282,9 +287,9 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
     <div className="bg-white p-6 rounded-xl shadow">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">📋 All Projects</h2>
+          <h2 className="text-2xl font-bold text-gray-800">🟢 Active Projects</h2>
           <p className="text-sm text-gray-600 mt-1">
-            {projects.length} total project{projects.length !== 1 ? 's' : ''} • {getTotalAssignedMembers()} team members assigned
+            {projects.length} active project{projects.length !== 1 ? 's' : ''} • {getTotalAssignedMembers()} team members assigned
           </p>
           {projects.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -357,23 +362,18 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <span className="ml-2 text-gray-500">Loading projects and team members...</span>
+              <span className="ml-2 text-gray-500">Loading active projects and team members...</span>
             </div>
           ) : projects.length === 0 && !error ? (
             <div className="text-center py-12">
-              <div className="text-gray-400 text-lg mb-2">📋</div>
-              <div className="text-lg font-medium text-gray-600 mb-2">No Projects Found</div>
-              <div className="text-sm text-gray-500">There are currently no projects in the system.</div>
+              <div className="text-gray-400 text-lg mb-2">🟢</div>
+              <div className="text-lg font-medium text-gray-600 mb-2">No Active Projects Found</div>
+              <div className="text-sm text-gray-500">There are currently no active projects in the system.</div>
             </div>
           ) : (
             <div className="space-y-6">
               {projects.map((project) => (
-                <div key={project.id} className={`bg-white border border-gray-200 rounded-lg p-6 shadow-sm border-l-4 ${
-                  project.status?.toLowerCase() === 'active' ? 'border-l-green-500' : 
-                  project.status?.toLowerCase() === 'upcoming' ? 'border-l-blue-500' :
-                  project.status?.toLowerCase() === 'planning' ? 'border-l-purple-500' :
-                  'border-l-gray-500'
-                }`}>
+                <div key={project.id} className={`bg-white border border-gray-200 rounded-lg p-6 shadow-sm border-l-4 border-l-green-500`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800">
@@ -555,8 +555,8 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
       {!isVisible && (
         <div className="text-center py-8">
           <div className="text-gray-400 text-lg mb-2">👁️‍🗨️</div>
-          <div className="text-gray-500">Projects section is hidden</div>
-          <div className="text-sm text-gray-400 mt-1">Click "Show" to view all projects</div>
+          <div className="text-gray-500">Active projects section is hidden</div>
+          <div className="text-sm text-gray-400 mt-1">Click "Show" to view active projects</div>
         </div>
       )}
     </div>
