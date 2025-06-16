@@ -39,7 +39,7 @@ const ProjectDetailPage = ({ projectId, onBack }) => {
       if (projectsData.active_projects && projectsData.active_projects[projectId]) {
         const projectData = projectsData.active_projects[projectId];
 
-        settheId(projectData.project_info.id)
+        settheId(projectData.project_info.id);
         const allTeamMembers = teamMembersData.data || [];
 
         // Process project data
@@ -180,12 +180,20 @@ const ProjectDetailPage = ({ projectId, onBack }) => {
     const memberId = member.id; // Always numeric ID only
     const ratingData = ratings[memberId];
     
-    if (!ratingData || (!ratingData.rating && !ratingData.feedback)) {
-      alert('Please provide at least a rating or feedback');
+      // ✅ Guard against missing project ID
+    if (!theid) {
+      alert("Project ID is not yet ready. Please wait a moment.");
       return;
     }
 
-    const requestBody = {
+
+  // ✅ Guard against empty rating + feedback
+    if (!ratingData || (!ratingData.rating && !ratingData.feedback)) {
+      alert('Please provide a rating or feedback before submitting.');
+      return;
+    }
+
+    const body = {
       team_member: memberId, 
       project: theid,
       rating: ratingData.rating || null,
@@ -193,9 +201,9 @@ const ProjectDetailPage = ({ projectId, onBack }) => {
     };
 
     // Console log the request body
-    console.log('Submitting rating with body:', requestBody);
-    console.log('Member details:', member);
-    console.log('Project ID:', projectId);
+    // console.log('Submitting rating with body:', body);
+    // console.log('Member details:', member);
+    // console.log('Project ID:', projectId);
 
     setSubmittingRatings(prev => ({ ...prev, [memberId]: true }));
 
@@ -205,7 +213,7 @@ const ProjectDetailPage = ({ projectId, onBack }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(body)
       });
 
       if (response.ok) {
