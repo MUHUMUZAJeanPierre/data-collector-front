@@ -210,16 +210,6 @@ const CollectorTable = ({ collectors, refresh, currentProject = null }) => {
         </select>
       </div>
 
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mb-4 p-2 bg-gray-100 text-sm">
-          <strong>Debug:</strong> Found {filteredCollectors.length} collectors | 
-          Active Projects: {projectsLoading ? 'Loading...' : activeProjects.length}
-          {!projectsLoading && activeProjects.length > 0 && (
-            <span className="ml-2">({activeProjects.join(', ')})</span>
-          )}
-        </div>
-      )}
-
       <div className="overflow-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-800 text-white sticky top-0">

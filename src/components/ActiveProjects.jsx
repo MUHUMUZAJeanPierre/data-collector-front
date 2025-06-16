@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ProjectDetailPage  from './DetailProject'
 
 const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
   const [projects, setProjects] = useState([]);
@@ -8,6 +9,12 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
   const [error, setError] = useState(null);
+  
+  // New state for detail page navigation
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [showDetailPage, setShowDetailPage] = useState(false);
+
+  
 
   useEffect(() => {
     fetchAllData();
@@ -43,8 +50,7 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
       const projectsData = await projectsResponse.json();
       const teamMembersData = await teamMembersResponse.json();
       
-      console.log("Projects API Response:", projectsData);
-      console.log("Team Members API Response:", teamMembersData);
+
       
       // Set team members data
       setTeamMembers(teamMembersData.data || []);
@@ -60,8 +66,8 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
           project.status?.toLowerCase() === 'active'
         );
         
-        console.log("All Projects:", projectsArray);
-        console.log("Active Projects Only:", activeProjects);
+      
+      
         setProjects(activeProjects);
       } else {
         console.error("Unexpected response format - no active_projects found", projectsData);
@@ -78,24 +84,35 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
   };
 
   const processProjectData = (projectName, projectData, allTeamMembers) => {
-    // Get data collectors (mobilizers) assigned to this project
+    console.log(`Processing project: ${projectName}`, projectData);
+    console.log('All team members:', allTeamMembers);
+
+    // Get data collectors from project data first (these are the ones in data_collectors array)
+    const dataCollectorsFromProject = (projectData.data_collectors || []).map(member => ({
+      ...member,
+      role: 'data_collector',
+      // Map to standardized format
+      ve_code: member.ve_code || 'N/A'
+    }));
+
+    // Get supervisors from project data (if supervisors array exists)
+    const supervisorsFromProject = (projectData.supervisors || []).map(member => ({
+      ...member,
+      role: 'supervisor',
+      ve_code: member.ve_code || 'N/A'
+    }));
+
+    // Get additional team members assigned to this project from team members API
     const assignedDataCollectors = allTeamMembers.filter(member => 
       member.assigned_projects && 
       member.assigned_projects.includes(projectName) &&
-      member.role?.toLowerCase() === 'mobilizer'
+      member.role?.toLowerCase() === 'data_collector'
     ).map(member => ({
       ...member,
-      role: 'mobilizer'
+      role: 'data_collector'
     }));
 
-    // Get supervisors from project data
-    const supervisorsFromProjects = (projectData.supervisors || []).map(member => ({ 
-      ...member, 
-      role: 'supervisor' 
-    }));
-    
-    // Get supervisors from team members data
-    const supervisorsFromTeamMembers = allTeamMembers.filter(member => 
+    const assignedSupervisors = allTeamMembers.filter(member => 
       member.assigned_projects && 
       member.assigned_projects.includes(projectName) &&
       member.role?.toLowerCase() === 'supervisor'
@@ -104,21 +121,32 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
       role: 'supervisor'
     }));
 
-    // Combine all members, avoiding duplicates
-    const allMembers = [
-      ...assignedDataCollectors,
-      ...supervisorsFromProjects,
-      ...supervisorsFromTeamMembers.filter(sup => 
-        !supervisorsFromProjects.some(existing => existing.name === sup.name)
+    // Combine data collectors, avoiding duplicates based on name
+    const allDataCollectors = [
+      ...dataCollectorsFromProject,
+      ...assignedDataCollectors.filter(assigned => 
+        !dataCollectorsFromProject.some(existing => 
+          existing.name?.trim() === assigned.name?.trim()
+        )
       )
     ];
 
-    const uniqueSupervisors = [
-      ...supervisorsFromProjects, 
-      ...supervisorsFromTeamMembers.filter(sup => 
-        !supervisorsFromProjects.some(existing => existing.name === sup.name)
+    // Combine supervisors, avoiding duplicates based on name
+    const allSupervisors = [
+      ...supervisorsFromProject,
+      ...assignedSupervisors.filter(assigned => 
+        !supervisorsFromProject.some(existing => 
+          existing.name?.trim() === assigned.name?.trim()
+        )
       )
     ];
+
+    // Combine all members
+    const allMembers = [...allDataCollectors, ...allSupervisors];
+
+    console.log(`Project ${projectName} - Data Collectors:`, allDataCollectors.length);
+    console.log(`Project ${projectName} - Supervisors:`, allSupervisors.length);
+    console.log(`Project ${projectName} - Total Members:`, allMembers.length);
 
     return {
       id: projectName,
@@ -130,13 +158,26 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
       status: projectData.project_info.status || 'Unknown',
       numCollectorsNeeded: projectData.project_info.collectors_needed || 0,
       numSupervisorsNeeded: projectData.project_info.supervisors_needed || 0,
-      totalCollectors: assignedDataCollectors.length,
-      totalSupervisors: uniqueSupervisors.length,
+      totalCollectors: allDataCollectors.length,
+      totalSupervisors: allSupervisors.length,
       members: allMembers,
       memberCount: allMembers.length,
-      dataCollectors: assignedDataCollectors,
-      supervisors: uniqueSupervisors
+      dataCollectors: allDataCollectors,
+      supervisors: allSupervisors
     };
+  };
+
+  // Navigation functions
+  const handleViewDetails = (projectId) => {
+    setSelectedProjectId(projectId);
+    setShowDetailPage(true);
+  };
+
+  const handleBackToProjects = () => {
+    setShowDetailPage(false);
+    setSelectedProjectId(null);
+    // Refresh data when coming back to ensure any rating changes are reflected
+    setRefreshKey(prev => prev + 1);
   };
 
   const handleEndProject = async (projectId, projectName) => {
@@ -283,6 +324,18 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
     return statusGroups;
   };
 
+  // If showing detail page, render it instead of the main projects list
+  if (showDetailPage && selectedProjectId) {
+    return (
+      <ProjectDetailPage 
+        projectId={selectedProjectId} 
+        onBack={handleBackToProjects} 
+      />
+    );
+  }
+
+  
+
   return (
     <div className="bg-white p-6 rounded-xl shadow">
       <div className="flex justify-between items-center mb-6">
@@ -419,7 +472,7 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
                       <div className="flex">
                         <span className="text-sm font-medium text-gray-600 w-32">Assigned:</span>
                         <span className="text-sm text-gray-800">
-                          {project.totalCollectors} Mobilizers, {project.totalSupervisors} Supervisors
+                          {project.totalCollectors} Data Collectors, {project.totalSupervisors} Supervisors
                         </span>
                       </div>
 
@@ -436,24 +489,24 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
                   {/* Team Members Display */}
                   {project.members.length > 0 && (
                     <div className="mb-4 space-y-3">
-                      {getMembersByRole(project.members, 'mobilizer').length > 0 && (
+                      {/* {getMembersByRole(project.members, 'data_collector').length > 0 && (
                         <div className="flex flex-wrap items-start gap-2">
                           <span className="text-sm font-medium text-gray-600 w-32 flex-shrink-0">Data Collectors:</span>
                           <div className="flex flex-wrap gap-2">
-                            {getMembersByRole(project.members, 'mobilizer').map((mobilizer, index) => (
+                            {getMembersByRole(project.members, 'data_collector').map((collector, index) => (
                               <span key={index} className="bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded">
-                                {mobilizer.name}
-                                {mobilizer.ve_code && (
-                                  <span className="ml-1 text-blue-600">({mobilizer.ve_code})</span>
+                                {collector.name}
+                                {collector.ve_code && (
+                                  <span className="ml-1 text-blue-600">({collector.ve_code})</span>
                                 )}
-                                {mobilizer.performance_score && (
-                                  <span className="ml-1 text-blue-600">- Score: {mobilizer.performance_score}</span>
+                                {collector.performance_score !== undefined && collector.performance_score !== null && (
+                                  <span className="ml-1 text-blue-600">- Score: {collector.performance_score}</span>
                                 )}
                               </span>
                             ))}
                           </div>
                         </div>
-                      )}
+                      )} */}
 
                       {getMembersByRole(project.members, 'supervisor').length > 0 && (
                         <div className="flex flex-wrap items-start gap-2">
@@ -465,7 +518,7 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
                                 {supervisor.ve_code && (
                                   <span className="ml-1 text-green-600">({supervisor.ve_code})</span>
                                 )}
-                                {supervisor.performance_score && (
+                                {supervisor.performance_score !== undefined && supervisor.performance_score !== null && (
                                   <span className="ml-1 text-green-600">- Score: {supervisor.performance_score}</span>
                                 )}
                               </span>
@@ -528,6 +581,12 @@ const ActiveProjectsManager = ({ onProjectUpdateTrigger }) => {
 
                   {/* Action Buttons */}
                   <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                    <button
+                      className="bg-green-500 hover:bg-green-600 text-white text-sm font-medium px-4 py-2 rounded transition-colors flex items-center gap-2"
+                      onClick={() => handleViewDetails(project.id)}
+                    >
+                      📊 View Details & Rate Team
+                    </button>
                     <button
                       className="bg-red-500 hover:bg-red-600 text-white text-sm font-medium px-4 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       onClick={() => handleEndProject(project.id, project.name)}
