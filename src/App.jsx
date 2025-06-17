@@ -4,7 +4,7 @@ import { getTeamMembers } from './api/api';
 import Dashboard from './components/Dashboard';
 import CollectorTable from './components/CollectorTable';
 import ProjectForm from './components/ProjectForm';
-import PerformanceManager from './components/PerformanceManager';
+
 import ActiveProjects from './components/ActiveProjects';
 
 function App() {
@@ -48,10 +48,7 @@ function App() {
             refresh={fetchCollectors}
             currentProject={currentProject}
           />
-          <PerformanceManager
-            collectors={collectors}
-            refresh={fetchCollectors}
-          />
+         
         </div>
       </div>
     </div>
